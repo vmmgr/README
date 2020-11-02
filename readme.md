@@ -1,0 +1,92 @@
+# vmmgr
+
+
+## 特徴
+### vmmgr v1.0の問題点
+前回のvmmgr v1.0では、仮想マシンを実行させるためにNode側で無理やりコマンドを実行させるという荒業をしていた。  
+Golangを書き始めた初期のソースコードということもあり、安定性は意外とあったが一度ネットワーク構成を変更すると、ControllerがNodeに接続できなくなりVMの操作が不能になるという事態になっていた。
+
+- スケーラビリティではない
+- 保守性に優れていない
+- ユーザ、グループ認証に問題がある
+- Node側にもデータベースを持っているため管理がかなりだるい
+- エラー処理をミスってパニックを起こす
+
+### vmmgr v2.0
+- 認証基盤とDB部分をhttps://github.com/homenoc/dsbd-backend で共通化
+- Web部分をhttps://github.com/homenoc/dsbd-web,https://github.com/homenoc/dsbd-web-admin で共通化
+- Node側にはDBを持たない
+- gRPCの廃止
+- RestAPI
+- WebSocket
+- libvirtのAPIを使用
+- リージョン・ゾーンを定義
+
+##### コードの共通化のメリット
+コードを共通化することで、保守性、開発の継続性を維持する。  
+##### libvirtAPIの使用について
+libvirtをAPIとして使用することで、libvirt単独でも動作可能なのでコントローラ、ノードがすべて死んでもなんとかなる
+##### リージョン・ゾーンの定義
+リージョン・ゾーンの定義により、ゾーンごとの一括操作などが容易になる予定
+不必要な通信の削減
+
+#### 理想
+- DatabaseをMasterとBackupで冗長化
+- コントローラが異なるリージョンのDBにアクセスする際は、宛先リージョンを踏み台にデータのやり取りを行う
+
+##### DatabaseをMasterとBackupで冗長構成
+- 書き込みを同時に行う
+- 違うリージョンの場合はコントローラを踏み台とする
+
+
+
+
+
+### 構成（理想）
+::: drawio
+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
+:::
+
+### Database
+::: drawio
+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
+:::
+
+#### VM
+##### VM Boot
+| Type | 種類          |
+| ---- | ------------- |
+| 0    | HDD           |
+| 1    | CDROM           |
+| 2    | Floppy      |
+
+
+#### Node Storage
+##### CPU
+| Type | 種類 |
+| -------- | -------- |
+| 0     | 64bit     |
+| 32   | 32bit     |
+| 64      | 64bit    |
+
+##### Type
+| Type | 種類 |
+| -------- | -------- |
+| 0     | HDD     |
+| 1     | SSD     |
+| 2     | NVME SSD    |
+
+#### Node
+##### Type
+
+| Type | 種類 |
+| -------- | -------- |
+| 0     | CentOS8     |
+| 1     | ubuntu 20.04(Netplan)     |
+
+
+
+### 認証方法
+::: drawio
+7Vpbj5s4FP41lroPU2HuPEJC2peVKk2r3X2qaPAkqFxScCbJ/vra2A7Yhs40IpkoqTTK2MfHt/Odi48NsGbF/kOdbNZ/VynKgWmke2DNgWma0PbIP0o5MAoMLJdRVnWWclpHeMz+R5xocOo2S1EjMeKqynG2kYnLqizREku0pK6rncz2VOXyrJtkhTTC4zLJdeo/WYrXjOqbXkf/iLLVWswM3YC1FIlg5jtp1kla7XokKwbWrK4qzErFfoZyKj0hF9ZvMdJ6XFiNSvyaDibr8JzkW763WZ7Rvmx1+CC2XFfbMkW0lwGsaLfOMHrcJEvauiMoE9oaFzmpQVLkg6Iao/3owuBxu0RRUFUgXB8IC+/wYPpcRFxJHmxe33USh0KM6560BV/CQV4dx+7kQApcFMNisTSxPKKa7OftxWK/oVRsTSqaPFCZhtTASK2sSiTvn+yxPvxLZfXeEdX/+m3zPRckqx14jc2CUs0oFakRL5DUK4R7qq0LsicoZ0BOglajPMHZszzjkPD4DJ+qjFpNp76mDJTtKgA01bZeIt6tb6HqSDBQerJNaj1b9I4bfRWgzpUD+lboweC9Mw163UjTo+f+FnrLPGmabDnkka4XCM2MzBNxUIbxz2ZSngbKl4bGDeNz9R2VGkAkEmAZkgbXhHNW5VXd2dxTlucKKcmzVUlxJUiRCayIxpWMnFFC3lBkaUqnGYxKctyaIjBBaxipnqIEA4qiAnpKXPJv3xAU/YXGqdFEG0n1bNOZQqDB8rnY3IMleIqI4eVMQUx1R7ZgelPZgqUiMJ0tQHj7uOi+RQ2zJ0ZrLXmZEBc9AY6LJKMsYZrWqGkAXQyRvZtT9/SNhHJ3RUsfk2b97lPSMtCy4DN6Tu6vI/FODgHEhJST89EZ9nTQ9JwzeT89bw+XSwbirYse2iNu8RJRR78ZmEearC99V2IaskQuelcC/+TWI77dmSy57g11hshwB+n1C1nxq3Fwfz3OhKDo6fXtgaJI8+Rc76WccUJYhjJwdmBKs2cJHvfHlr5tRE9ViR+a9mUnJAzQ2ey7RnHGEoNQ5tNH2ZKz11fchv+WSz6Lqec6XGz6zFLKyniJNNiC5EUScrtZmXoF+0/aI1B/U+qh6NL72lLFaZupTp5tmgYneNtwjrF5Jj8Q5ugJv/lx0BpLofrHcDjgxNTHhpPOPvrNz+156RdS1FNj5xlzXbHkm4ZFFeepl0MvXTJNCMvQ1dDVBI8/wVMJnm5SUI9dfms28vovHTsvFTlH57mPyOlfMHAKhzz2ehhbwIcgXPBvdHjVA7EHAhsECxC7wPcBWQprCoK2YAL/HHBdy82XPfJG3L/m8QYQm+Lma+BLoa2KmAkCE8Q2iBYgmIPYAeEcBL6AyGsLBikfnee7ltunVAIoAdE3+XVyN9wY4t1w80goSES5QgNEM9ovsoE/v111sAwoaYOla4M1dACZRBv0e1BJG8wZf1yY9V4PIhIlvyr4Uuwc4BNsHQFi3BbIn8cLFM2WnegV4/EjYe5BizhREMLjg9AXzLJL6MZZ0N8gHu3lz3qKRhYWtqrX1zgoKGx2roMs0VRNwaOriMJ2Ejb24NIMWr5ZPVW/bzQHXomnUlRS7T4pZUfU7stcK/4J
+:::
